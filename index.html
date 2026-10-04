@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Carga de Camión</title>
+<meta name="theme-color" content="#b4442a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Carga">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one narrow working column (thumb reach), entry block on top, load list below, totals bar fixed to the bottom. */
+:root{
+  --bg:#e9ecef;          /* concrete */
+  --panel:#ffffff;
+  --ink:#18222c;         /* steel ink */
+  --muted:#5b6672;
+  --line:#cfd5db;
+  --accent:#b4442a;      /* red-oxide primer */
+  --accent-ink:#ffffff;
+  --ok:#2f7a4f;
+  --warn:#a86a00;
+  --bad:#b3261e;
+  --chip:#dfe4e8;
+  --font-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --font-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mark:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12171c;--panel:#1b2229;--ink:#e6eaee;--muted:#9aa5b0;--line:#2e3943;
+  --accent:#e0694c;--accent-ink:#16110f;--ok:#5fbf86;--warn:#e0a63a;--bad:#ff8a80;--chip:#26303a;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12171c;--panel:#1b2229;--ink:#e6eaee;--muted:#9aa5b0;--line:#2e3943;
+  --accent:#e0694c;--accent-ink:#16110f;--ok:#5fbf86;--warn:#e0a63a;--bad:#ff8a80;--chip:#26303a;color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.45;padding-inline:16px;padding-block:0 150px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px;padding-block:14px 0}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1;margin:0;letter-spacing:.01em;text-transform:uppercase}
+.proj{font-size:.85rem;color:var(--muted);min-width:0}
+.proj b{color:var(--ink);font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--chip);color:var(--muted);border:0}
+.pill.on{color:var(--ok)}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+details.panel>summary{list-style:none;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:600}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary .sum{font-weight:400;color:var(--muted);font-size:.85rem;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+details.panel>summary::after{content:"▾";color:var(--muted);transition:transform .15s}
+details[open].panel>summary::after{transform:rotate(180deg)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 14px}
+.fields .full{grid-column:1/-1}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;min-width:0}
+label.f input,label.f textarea{text-transform:none;letter-spacing:0;font-weight:400;font-size:1rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;min-width:0}
+textarea{resize:vertical}
+
+/* Entry block */
+.entry{padding:14px;display:flex;flex-direction:column;gap:12px;border-color:var(--ink);border-width:2px}
+.entry-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+#marca{font-family:var(--font-mark);font-size:1.6rem;font-weight:600;text-transform:uppercase;padding:10px 12px;border:2px solid var(--line);border-radius:8px;background:var(--bg);width:100%;min-width:0;letter-spacing:.02em}
+#marca:focus{border-color:var(--accent);outline:none}
+.qty{display:flex;align-items:stretch;border:2px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+.qty button{width:46px;border:0;background:var(--chip);font-size:1.4rem;font-weight:600}
+.qty input{width:58px;border:0;text-align:center;font-family:var(--font-display);font-size:1.6rem;font-weight:700;background:transparent;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.qty input::-webkit-outer-spin-button,.qty input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.small-label{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.info{min-height:1.3em;font-size:.88rem;color:var(--muted)}
+.info.warn{color:var(--warn)}
+.info.bad{color:var(--bad)}
+.sugs{display:flex;flex-wrap:wrap;gap:6px}
+.sugs button{font-family:var(--font-mark);font-size:.95rem;font-weight:500;padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:var(--bg)}
+.btn{border:0;border-radius:8px;padding:14px 16px;font-weight:600;font-size:1.05rem}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:var(--chip);color:var(--ink)}
+.btn.big{font-family:var(--font-display);font-size:1.4rem;letter-spacing:.04em;text-transform:uppercase;padding:12px}
+.err{color:var(--bad);font-size:.88rem;min-height:0}
+
+/* Load list */
+.list-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.list-head h2{font-family:var(--font-display);font-size:1.3rem;text-transform:uppercase;letter-spacing:.03em;margin:0}
+.list-head span{font-size:.85rem;color:var(--muted)}
+ul.items{list-style:none;margin:0;padding:0}
+ul.items li{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+ul.items li:first-child{border-top:0}
+.it-main{min-width:0}
+.it-mark{font-family:var(--font-mark);font-weight:600;font-size:1.15rem;overflow-wrap:anywhere}
+.it-sub{font-size:.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it-sub.warn{color:var(--warn);white-space:normal}
+.it-sub.bad{color:var(--bad);white-space:normal}
+.it-qty{display:flex;align-items:center;gap:4px}
+.it-qty button{width:34px;height:34px;border-radius:6px;border:1px solid var(--line);background:var(--bg);font-size:1.1rem;font-weight:600}
+.it-qty output{min-width:34px;text-align:center;font-family:var(--font-display);font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums}
+.it-del{width:34px;height:34px;border:0;background:transparent;color:var(--muted);font-size:1.3rem}
+.empty{padding:18px 14px;color:var(--muted);font-size:.92rem}
+.empty ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+
+/* Bottom bar */
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:2px solid var(--ink);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.bar-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+.tot{display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;min-width:0}
+.tot div{display:flex;flex-direction:column;line-height:1.05}
+.tot b{font-family:var(--font-display);font-size:1.7rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tot small{font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+.tot .over b{color:var(--bad)}
+
+/* Send panel */
+.send{padding:14px;display:flex;flex-direction:column;gap:10px}
+.send h2{font-family:var(--font-display);font-size:1.3rem;text-transform:uppercase;margin:0}
+.send textarea{width:100%;min-height:180px;font-family:var(--font-mark);font-size:.85rem;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.actions .full{grid-column:1/-1}
+a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
+.note{font-size:.8rem;color:var(--muted)}
+
+.saved{font-size:.75rem;color:var(--warn);margin-top:4px}
+.saved.on{color:var(--ok)}
+.pasos{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.aviso{background:var(--chip);border-left:4px solid var(--warn);padding:10px 12px;border-radius:6px;font-size:.92rem}
+.lista textarea{width:100%;min-height:110px;font-family:var(--font-mark);font-size:.8rem;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+.lista .body{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:8px;font-size:.92rem;display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px);z-index:5}
+#toast button{background:transparent;border:0;color:var(--bg);font-weight:700;text-decoration:underline}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+@media (max-width:380px){.fields{grid-template-columns:1fr}.tot{gap:10px}.tot b{font-size:1.45rem}}
+</style>
+<style>[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Carga de camión</h1>
+      <div class="proj" id="projLine">Sin proyecto</div>
+      <div class="saved" id="saved"></div>
+    </div>
+    <button class="pill" id="pillLista" type="button" aria-controls="listaBox">Sin lista de piezas</button>
+  </header>
+
+  <details class="panel" id="camion">
+    <summary>Datos del camión <span class="sum" id="camionSum">Toque para completar</span></summary>
+    <div class="fields">
+      <label class="f full">Proyecto (código)<input id="c_proyecto" autocomplete="off" placeholder="Ej. P-2026-01"></label>
+      <label class="f">Patente<input id="c_patente" autocomplete="off" autocapitalize="characters"></label>
+      <label class="f">Cargado por<input id="c_por" autocomplete="name"></label>
+      <label class="f full">Transportista<input id="c_transp" autocomplete="off"></label>
+      <label class="f">Chofer<input id="c_chofer" autocomplete="off"></label>
+      <label class="f">RUT chofer<input id="c_rut" autocomplete="off" inputmode="text"></label>
+      <label class="f">Folio guía SII<input id="c_folio" autocomplete="off" inputmode="numeric"></label>
+      <label class="f full">Observaciones<textarea id="c_obs" rows="2"></textarea></label>
+    </div>
+  </details>
+
+  <section class="panel entry" aria-label="Agregar pieza">
+    <div class="entry-row">
+      <div style="min-width:0">
+        <div class="small-label">Marca</div>
+        <input id="marca" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" placeholder="V-101">
+      </div>
+      <div>
+        <div class="small-label">Cant.</div>
+        <div class="qty">
+          <button type="button" id="qMinus" aria-label="Restar uno">−</button>
+          <input id="cant" type="number" inputmode="numeric" min="1" value="1" aria-label="Cantidad">
+          <button type="button" id="qPlus" aria-label="Sumar uno">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="sugs" id="sugs"></div>
+    <div class="info" id="info"></div>
+    <button class="btn primary big" id="btnAdd" type="button">Agregar al camión</button>
+  </section>
+
+  <section class="panel" aria-label="Piezas cargadas">
+    <div class="list-head" style="padding:12px 14px 4px">
+      <h2>En el camión</h2><span id="listCount">0 marcas</span>
+    </div>
+    <ul class="items" id="items"></ul>
+    <div class="empty" id="empty">
+      Todavía no hay piezas cargadas.
+      <ol>
+        <li>Escriba la marca de la pieza y la cantidad.</li>
+        <li>Toque <b>Agregar al camión</b>. Si repite una marca, se suma.</li>
+        <li>Al terminar, toque <b>Enviar</b> y mande la carga por WhatsApp.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="panel send" id="sendBox" hidden aria-label="Enviar carga">
+    <h2>Enviar a oficina</h2>
+    <div class="note">Este es el mensaje que recibirá la oficina. Envíelo tal cual.</div>
+    <textarea id="msg" readonly></textarea>
+    <div class="actions">
+      <a class="btn primary full" id="btnWa" href="#" target="_blank" rel="noopener">Abrir en WhatsApp</a>
+      <button class="btn ghost" id="btnCopy" type="button">Copiar mensaje</button>
+      <button class="btn ghost" id="btnFile" type="button" hidden>Guardar archivo</button>
+    </div>
+    <div class="note">Si WhatsApp no se abre, toque <b>Copiar mensaje</b> y péguelo en el chat de la oficina.</div>
+    <button class="btn ghost" id="btnNew" type="button">Nueva carga</button>
+  </section>
+
+  <details class="panel lista" id="listaBox">
+    <summary>Lista de piezas (opcional) <span class="sum" id="listaSum">Para sugerir marcas y calcular kg</span></summary>
+    <div class="body">
+      <div class="note">La oficina le envía un mensaje que empieza con <b>#LISTA</b>. Cópielo completo y péguelo aquí.</div>
+      <textarea id="listaTxt" placeholder="Pegue aquí el mensaje #LISTA"></textarea>
+      <div class="actions">
+        <button class="btn primary" id="btnLista" type="button">Cargar lista</button>
+        <button class="btn ghost" id="btnListaDel" type="button">Quitar lista</button>
+      </div>
+      <div class="info" id="listaInfo"></div>
+    </div>
+  </details>
+
+  <details class="panel lista" id="atajo">
+    <summary>Acceso directo en el teléfono <span class="sum">Para no perder la carga</span></summary>
+    <div class="body">
+      <div class="aviso" id="avisoApp" hidden>Está abriendo la app dentro de WhatsApp. Ahí la carga no queda guardada. Use el menú (⋮ o ···) y elija <b>Abrir en el navegador</b>; luego cree el acceso directo.</div>
+      <ol class="pasos" id="pasosAndroid">
+        <li>Abra este enlace en <b>Chrome</b>, no dentro de WhatsApp.</li>
+        <li>Toque el menú <b>⋮</b> arriba a la derecha.</li>
+        <li>Elija <b>Agregar a pantalla principal</b> (o <b>Instalar</b>) y confirme.</li>
+        <li>Desde ahora abra la app siempre con ese ícono.</li>
+      </ol>
+      <ol class="pasos" id="pasosIOS" hidden>
+        <li>Abra este enlace en <b>Safari</b>, no dentro de WhatsApp.</li>
+        <li>Toque <b>Compartir</b> (el cuadrado con la flecha hacia arriba).</li>
+        <li>Elija <b>Agregar a inicio</b> y toque <b>Agregar</b>.</li>
+        <li>Desde ahora abra la app siempre con ese ícono.</li>
+      </ol>
+      <div class="note">Antes de cerrar, envíe siempre la carga: el mensaje de WhatsApp queda como respaldo.</div>
+    </div>
+  </details>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <div class="tot" id="tot">
+      <div><b id="tPzs">0</b><small>piezas</small></div>
+      <div id="tKgBox"><b id="tKg">–</b><small id="tKgLbl">kg</small></div>
+    </div>
+    <button class="btn primary big" id="btnSend" type="button">Enviar</button>
+  </div>
+</div>
+<div id="toast" hidden role="status"><span id="toastTxt"></span><button id="toastUndo" type="button" hidden>Deshacer</button></div>
+
+<script>
+(function(){
+  const KEY = "cargaCamion.v1";
+  const $ = id => document.getElementById(id);
+  const fmt = n => Math.round(n).toLocaleString("es-CL");
+  const norm = s => (s||"").toUpperCase().replace(/\s+/g," ").trim();
+
+  let st = load() || fresh();
+  function fresh(keepCamion){
+    const prev = keepCamion ? st : null;
+    return {
+      id: "",
+      items: [],
+      camion: prev ? {proyecto:prev.camion.proyecto, por:prev.camion.por, patente:"", transp:"", chofer:"", rut:"", folio:"", obs:""}
+                   : {proyecto:"", por:"", patente:"", transp:"", chofer:"", rut:"", folio:"", obs:""},
+      lista: prev ? prev.lista : null
+    };
+  }
+  function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); return s && s.camion ? s : null; }catch(e){ return null; } }
+  function saveLocal(){ try{ localStorage.setItem(KEY, JSON.stringify(st)); }catch(e){} }
+  function save(){ st.ts = Date.now(); saveLocal(); queueCloud(); }
+
+  // ---- Copia en la cuenta Claude (si el visitante tiene sesión y permiso) ----
+  let cloud = null, cloudBusy = false, cloudAgain = false, cloudTimer;
+  function setSaved(where){
+    const el = $("saved");
+    el.textContent = where==="cuenta" ? "Se guarda en su cuenta: puede cerrar la página sin perder la carga"
+                                      : "Se guarda en este teléfono. Ábrala siempre desde el acceso directo";
+    el.classList.toggle("on", where==="cuenta");
+  }
+  function queueCloud(){ if(!cloud) return; clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 1200); }
+  async function pushCloud(){
+    if(!cloud) return;
+    if(cloudBusy){ cloudAgain = true; return; }
+    cloudBusy = true;
+    try{ await cloud.set({state: JSON.stringify(st), ts: st.ts || Date.now()}); setSaved("cuenta"); }
+    catch(e){ const c = e && e.code;
+      if(c!=="resource_exhausted" && c!=="rate_limited"){ cloud = null; setSaved("telefono"); } }
+    cloudBusy = false;
+    if(cloudAgain){ cloudAgain = false; pushCloud(); }
+  }
+  function initCloud(){
+    if(!(window.claude && window.claude.use)) return;
+    Promise.all([window.claude.use("db"), window.claude.use("user")]).then(async ([db, user])=>{
+      if(!db || !user) return;
+      const uid = await user.id(); if(!uid) return;
+      const ref = db.collection("data/users/" + uid).doc("carga");
+      let snap; try{ snap = await ref.get(); }catch(e){ return; }
+      cloud = ref;
+      if(snap.exists){
+        try{
+          const r = JSON.parse(snap.data().state);
+          if(r && r.camion && (r.ts||0) > (st.ts||0)){
+            st = r; saveLocal(); fillCamion(); listaUI(); render();
+            if(st.items.length) toast("Carga recuperada: " + st.items.length + " marcas");
+          }
+        }catch(e){}
+        setSaved("cuenta");
+      } else if(st.items.length || st.camion.patente){ pushCloud(); }
+    }).catch(()=>{});
+  }
+
+  // ---- Truck fields ----
+  const campos = {proyecto:"c_proyecto", patente:"c_patente", por:"c_por", transp:"c_transp", chofer:"c_chofer", rut:"c_rut", folio:"c_folio", obs:"c_obs"};
+  function fillCamion(){ for(const k in campos) $(campos[k]).value = st.camion[k] || ""; sumCamion(); }
+  function sumCamion(){
+    const c = st.camion, parts = [c.patente, c.chofer].filter(Boolean);
+    $("camionSum").textContent = parts.length ? parts.join(" · ") : "Toque para completar";
+    const p = (st.lista && st.lista.proy) || c.proyecto;
+    $("projLine").innerHTML = "";
+    if(p){ const b=document.createElement("b"); b.textContent=p; $("projLine").append("Proyecto ", b);
+      if(st.lista && st.lista.nombre) $("projLine").append(" · " + st.lista.nombre); }
+    else $("projLine").textContent = "Sin proyecto (complete Datos del camión)";
+  }
+  for(const k in campos){ $(campos[k]).addEventListener("input", e=>{
+    st.camion[k] = k==="patente" ? e.target.value.toUpperCase() : e.target.value; save(); sumCamion(); }); }
+  $("camion").open = !st.camion.patente;
+
+  // ---- Piece list (optional) ----
+  function parseLista(txt){
+    const i = txt.indexOf("#LISTA"); if(i<0) return null;
+    const lines = txt.slice(i).split(/\r?\n/).map(l=>l.replace(/[‎‏‪-‮]/g,"").trim()).filter(Boolean);
+    const L = {proy:"", nombre:"", maxKg:0, piezas:{}};
+    for(const ln of lines.slice(1)){
+      const f = ln.split("|");
+      if(f[0]==="P"){ L.proy=f[1]||""; L.nombre=f[2]||""; L.maxKg=parseFloat(f[3])||0; continue; }
+      if(f.length>=3 && f[0]){ L.piezas[norm(f[0])] = {d:parseInt(f[1],10)||0, kg:parseFloat(f[2])||0, z:f[3]||"", desc:f[4]||""}; }
+    }
+    return Object.keys(L.piezas).length ? L : null;
+  }
+  function listaUI(){
+    const L = st.lista, n = L ? Object.keys(L.piezas).length : 0;
+    $("pillLista").textContent = L ? n + " marcas en lista" : "Sin lista de piezas";
+    $("pillLista").classList.toggle("on", !!L);
+    $("listaSum").textContent = L ? (L.proy + " · " + n + " marcas") : "Para sugerir marcas y calcular kg";
+    $("btnListaDel").hidden = !L;
+  }
+  $("pillLista").addEventListener("click", ()=>{ $("listaBox").open = true; $("listaBox").scrollIntoView({behavior:"smooth"}); });
+  $("btnLista").addEventListener("click", ()=>{
+    const L = parseLista($("listaTxt").value);
+    if(!L){ $("listaInfo").className="info bad"; $("listaInfo").textContent="No se reconoce la lista. Pegue el mensaje completo, desde #LISTA."; return; }
+    st.lista = L; if(L.proy) st.camion.proyecto = L.proy;
+    save(); $("listaTxt").value=""; $("listaInfo").className="info"; $("listaInfo").textContent="Lista cargada: "+Object.keys(L.piezas).length+" marcas.";
+    fillCamion(); listaUI(); render(); $("listaBox").open=false; $("marca").focus();
+  });
+  $("btnListaDel").addEventListener("click", ()=>{ st.lista=null; save(); listaUI(); render(); $("listaInfo").textContent="Lista quitada."; });
+
+  // ---- Entry ----
+  const mInp = $("marca"), qInp = $("cant");
+  function qVal(){ const v = parseInt(qInp.value,10); return v>0 ? v : 1; }
+  $("qMinus").addEventListener("click", ()=>{ qInp.value = Math.max(1, qVal()-1); });
+  $("qPlus").addEventListener("click", ()=>{ qInp.value = qVal()+1; });
+  function cargado(m){ const it = st.items.find(x=>x.m===m); return it ? it.q : 0; }
+  function showInfo(){
+    const m = norm(mInp.value), el = $("info"), box = $("sugs");
+    box.innerHTML=""; el.className="info"; el.textContent="";
+    if(!m) return;
+    const L = st.lista;
+    if(L){
+      const p = L.piezas[m];
+      if(p){
+        const ya = cargado(m), libre = p.d - ya;
+        el.textContent = (p.desc ? p.desc+" · " : "") + p.kg.toLocaleString("es-CL",{maximumFractionDigits:1}) + " kg/u · disponibles " + p.d + (ya? " (ya en camión "+ya+")" : "");
+        if(libre<=0) el.className="info bad";
+      } else {
+        const hits = Object.keys(L.piezas).filter(k=>k.includes(m)).sort((a,b)=>(a.indexOf(m)-b.indexOf(m))||a.localeCompare(b)).slice(0,8);
+        hits.forEach(k=>{ const b=document.createElement("button"); b.type="button"; b.textContent=k;
+          b.addEventListener("click",()=>{ mInp.value=k; showInfo(); qInp.focus(); qInp.select(); }); box.append(b); });
+        if(!hits.length){ el.className="info warn"; el.textContent="Esta marca no está en la lista. Revise que esté bien escrita."; }
+      }
+    }
+  }
+  mInp.addEventListener("input", showInfo);
+  mInp.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); qInp.focus(); qInp.select(); } });
+  qInp.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); add(); } });
+  $("btnAdd").addEventListener("click", add);
+
+  function nuevoId(){ const d=new Date(), p=n=>String(n).padStart(2,"0");
+    return "M"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())+"-"+Math.floor(Math.random()*1000); }
+  function add(){
+    const m = norm(mInp.value);
+    if(!m){ $("info").className="info bad"; $("info").textContent="Escriba la marca de la pieza."; mInp.focus(); return; }
+    const q = qVal();
+    if(!st.id) st.id = nuevoId();
+    const it = st.items.find(x=>x.m===m);
+    if(it) it.q += q; else st.items.unshift({m, q});
+    save(); render();
+    toast(m+" × "+q+" agregada");
+    mInp.value=""; qInp.value=1; $("sugs").innerHTML=""; $("info").textContent=""; mInp.focus();
+    $("sendBox").hidden = true;
+  }
+
+  // ---- List render ----
+  function render(){
+    const ul = $("items"); ul.innerHTML="";
+    const L = st.lista; let pzs=0, kg=0, kgOk=!!L;
+    st.items.forEach((it,idx)=>{
+      pzs += it.q;
+      const p = L && L.piezas[it.m];
+      if(p) kg += p.kg*it.q;
+      const li = document.createElement("li");
+      const main = document.createElement("div"); main.className="it-main";
+      const mk = document.createElement("div"); mk.className="it-mark"; mk.textContent=it.m;
+      const sub = document.createElement("div"); sub.className="it-sub";
+      if(L && !p){ sub.className="it-sub warn"; sub.textContent="No está en la lista"; }
+      else if(p && it.q>p.d){ sub.className="it-sub bad"; sub.textContent="Excede disponibles ("+p.d+")"; }
+      else if(p){ sub.textContent=(p.desc||"")+(p.desc?" · ":"")+fmt(p.kg*it.q)+" kg"; }
+      main.append(mk, sub);
+      const qd = document.createElement("div"); qd.className="it-qty";
+      const bm = document.createElement("button"); bm.type="button"; bm.textContent="−"; bm.setAttribute("aria-label","Restar uno a "+it.m);
+      const out = document.createElement("output"); out.textContent=it.q;
+      const bp = document.createElement("button"); bp.type="button"; bp.textContent="+"; bp.setAttribute("aria-label","Sumar uno a "+it.m);
+      bm.addEventListener("click",()=>{ if(it.q>1){ it.q--; save(); render(); } else quitar(idx); });
+      bp.addEventListener("click",()=>{ it.q++; save(); render(); });
+      qd.append(bm,out,bp);
+      const del = document.createElement("button"); del.type="button"; del.className="it-del"; del.textContent="×"; del.setAttribute("aria-label","Quitar "+it.m);
+      del.addEventListener("click",()=>quitar(idx));
+      li.append(main,qd,del); ul.append(li);
+    });
+    $("empty").hidden = st.items.length>0;
+    $("listCount").textContent = st.items.length + (st.items.length===1?" marca":" marcas");
+    $("tPzs").textContent = pzs;
+    $("tKg").textContent = kgOk ? fmt(kg) : "–";
+    const over = kgOk && L.maxKg>0 && kg>L.maxKg;
+    $("tKgBox").classList.toggle("over", over);
+    $("tKgLbl").textContent = over ? "kg · excede "+fmt(L.maxKg) : (kgOk && L.maxKg ? "kg de "+fmt(L.maxKg) : "kg");
+    if(!$("sendBox").hidden) buildMsg();
+  }
+  let undoBuf=null;
+  function quitar(idx){
+    undoBuf = {it: st.items[idx], idx};
+    st.items.splice(idx,1); save(); render();
+    toast(undoBuf.it.m+" quitada", true);
+  }
+  let tt;
+  function toast(t, undo){
+    $("toastTxt").textContent=t; $("toastUndo").hidden=!undo; $("toast").hidden=false;
+    clearTimeout(tt); tt=setTimeout(()=>{ $("toast").hidden=true; undoBuf=null; }, undo?5000:1800);
+  }
+  $("toastUndo").addEventListener("click",()=>{ if(undoBuf){ st.items.splice(undoBuf.idx,0,undoBuf.it); undoBuf=null; save(); render(); } $("toast").hidden=true; });
+
+  // ---- Send ----
+  function fechaTxt(){ const d=new Date(), p=n=>String(n).padStart(2,"0");
+    return p(d.getDate())+"-"+p(d.getMonth()+1)+"-"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes()); }
+  function buildMsg(){
+    const c = st.camion, L = st.lista, lines = ["#CARGA v1", "ID: "+st.id];
+    const add = (k,v)=>{ v=(v||"").replace(/\s*\n\s*/g," ").trim(); if(v) lines.push(k+": "+v); };
+    add("Proyecto", (L && L.proy) || c.proyecto);
+    add("Fecha", fechaTxt());
+    add("Cargado por", c.por); add("Patente", c.patente); add("Transportista", c.transp);
+    add("Chofer", c.chofer); add("RUT chofer", c.rut); add("Folio guia", c.folio); add("Obs", c.obs);
+    lines.push("---");
+    let pzs=0, kg=0;
+    st.items.slice().reverse().forEach(it=>{ lines.push(it.m+" x "+it.q); pzs+=it.q; const p=L&&L.piezas[it.m]; if(p) kg+=p.kg*it.q; });
+    lines.push("---");
+    lines.push("Total: "+st.items.length+" marcas, "+pzs+" piezas"+(L? ", "+fmt(kg)+" kg" : ""));
+    const txt = lines.join("\n");
+    $("msg").value = txt;
+    $("btnWa").href = "https://wa.me/?text=" + encodeURIComponent(txt);
+    return txt;
+  }
+  $("btnSend").addEventListener("click", ()=>{
+    if(!st.items.length){ toast("No hay piezas cargadas"); mInp.focus(); return; }
+    const faltan = [];
+    if(!((st.lista && st.lista.proy) || st.camion.proyecto)) faltan.push("proyecto");
+    if(!st.camion.patente) faltan.push("patente");
+    buildMsg();
+    $("sendBox").hidden=false;
+    if(faltan.length){ $("camion").open=true; toast("Falta: "+faltan.join(" y ")+" (puede enviar igual)"); }
+    $("sendBox").scrollIntoView({behavior:"smooth", block:"start"});
+  });
+  $("btnCopy").addEventListener("click", ()=>{
+    const txt = buildMsg();
+    const fallback = ()=>{ const t=$("msg"); t.focus(); t.select(); toast("Texto seleccionado: use Copiar del teléfono"); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(()=>toast("Mensaje copiado. Péguelo en WhatsApp."), fallback);
+    } else fallback();
+  });
+  // Guardar archivo: hoja de compartir del teléfono o descarga normal
+  $("btnFile").hidden = false;
+  $("btnFile").textContent = "Compartir archivo";
+  $("btnFile").addEventListener("click", async ()=>{
+    const d=new Date(), p=n=>String(n).padStart(2,"0");
+    const name = "carga_"+(st.camion.patente||"camion").replace(/[^A-Za-z0-9-]/g,"")+"_"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"_"+p(d.getHours())+p(d.getMinutes())+".txt";
+    const txt = buildMsg();
+    try{
+      const file = new File([txt], name, {type:"text/plain"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:"Carga de camión"}); return; }
+    }catch(e){ if(e && e.name==="AbortError") return; }
+    const url = URL.createObjectURL(new Blob([txt], {type:"text/plain"}));
+    const a = document.createElement("a"); a.href=url; a.download=name; document.body.append(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    toast("Archivo descargado");
+  });
+  let armed=false, at;
+  $("btnNew").addEventListener("click", ()=>{
+    if(!armed){ armed=true; $("btnNew").textContent="Toque otra vez para borrar esta carga"; clearTimeout(at);
+      at=setTimeout(()=>{ armed=false; $("btnNew").textContent="Nueva carga"; }, 4000); return; }
+    armed=false; $("btnNew").textContent="Nueva carga";
+    st = fresh(true); save(); fillCamion(); render(); $("sendBox").hidden=true; $("camion").open=true;
+    window.scrollTo({top:0, behavior:"smooth"}); toast("Lista vacía. Lista para el próximo camión.");
+  });
+
+  // Keep screen on while loading (optional)
+  async function wake(){ try{ if(navigator.wakeLock && document.visibilityState==="visible") await navigator.wakeLock.request("screen"); }catch(e){} }
+  document.addEventListener("visibilitychange", wake); wake();
+
+  // ---- Instrucciones de acceso directo según el teléfono ----
+  const ua = navigator.userAgent || "";
+  const esIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+  const enApp = /WhatsApp|FBAN|FBAV|Instagram|Line\//i.test(ua);
+  $("pasosIOS").hidden = !esIOS; $("pasosAndroid").hidden = esIOS;
+  $("avisoApp").hidden = !enApp;
+  if(enApp) $("atajo").open = true;
+
+  setSaved("telefono");
+  fillCamion(); listaUI(); render();
+})();
+</script>
+</body>
+</html>
