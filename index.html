@@ -50,7 +50,7 @@ button{cursor:pointer}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 
 header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
-h1{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1;margin:0;letter-spacing:.01em;text-transform:uppercase}
+h1{font-family:var(--font-display);font-weight:700;font-size:1.8rem;line-height:1;margin:0;letter-spacing:.01em;text-transform:uppercase}
 .proj{font-size:.85rem;color:var(--muted);min-width:0}
 .proj b{color:var(--ink);font-weight:600}
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--chip);color:var(--muted);border:0}
@@ -127,6 +127,10 @@ ul.items li:first-child{border-top:0}
 a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
 .note{font-size:.8rem;color:var(--muted)}
 
+.modo{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--chip);padding:4px;border-radius:10px}
+.modo button{border:0;border-radius:8px;padding:10px 8px;font-family:var(--font-display);font-size:1.15rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;background:transparent;color:var(--muted)}
+.modo button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+label.f input[type=date]{min-height:2.6em}
 .obra{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .obra-row{display:flex;gap:10px;align-items:flex-end}
 label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;min-width:0;text-transform:none;letter-spacing:0}
@@ -164,12 +168,17 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
 <div class="wrap">
   <header>
     <div>
-      <h1>Carga de camión</h1>
+      <h1 id="titulo">Carga de camión</h1>
       <div class="proj" id="projLine">Sin proyecto</div>
       <div class="saved" id="saved"></div>
     </div>
     <button class="pill" id="pillLista" type="button" aria-controls="listaBox">Sin lista de piezas</button>
   </header>
+
+  <div class="modo" role="group" aria-label="Qué está registrando">
+    <button type="button" id="mDesp" aria-pressed="true">Despacho</button>
+    <button type="button" id="mFab" aria-pressed="false">Fabricación</button>
+  </div>
 
   <section class="panel obra" aria-label="Obra">
     <div class="obra-row">
@@ -199,6 +208,17 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
     </div>
   </details>
 
+  <details class="panel" id="ofHead" hidden>
+    <summary>Datos de la orden <span class="sum" id="ofSum">Toque para completar</span></summary>
+    <div class="fields">
+      <label class="f">Fecha de entrega<input id="f_entrega" type="date"></label>
+      <label class="f">Emitida por<input id="f_por" autocomplete="name"></label>
+      <label class="f full">Taller / línea<input id="f_taller" autocomplete="off" placeholder="Ej. Línea 2, Armado"></label>
+      <label class="f full">Responsable<input id="f_resp" autocomplete="off"></label>
+      <label class="f full">Observaciones<textarea id="f_obs" rows="2"></textarea></label>
+    </div>
+  </details>
+
   <section class="panel entry" aria-label="Agregar pieza">
     <div class="entry-row">
       <div style="min-width:0">
@@ -220,7 +240,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
   </section>
 
   <details class="panel disp" id="dispBox" open hidden>
-    <summary>Despachables de la obra <span class="sum" id="dispCount"></span></summary>
+    <summary><span id="dispTit">Despachables de la obra</span> <span class="sum" id="dispCount"></span></summary>
     <div class="disp-filt">
       <input id="dispQ" type="search" placeholder="Buscar marca o descripción" autocomplete="off">
       <select id="dispZona" aria-label="Zona"></select>
@@ -231,21 +251,26 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
 
   <section class="panel" aria-label="Piezas cargadas">
     <div class="list-head" style="padding:12px 14px 4px">
-      <h2>En el camión</h2><span id="listCount">0 marcas</span>
+      <h2 id="listTit">En el camión</h2><span id="listCount">0 marcas</span>
     </div>
     <ul class="items" id="items"></ul>
     <div class="empty" id="empty">
-      Todavía no hay piezas cargadas.
-      <ol>
+      <span id="emptyTit">Todavía no hay piezas cargadas.</span>
+      <ol id="emptyD">
         <li>Elija la obra arriba. Abajo aparecen sus piezas despachables.</li>
         <li>Toque <b>+</b> en cada pieza que sube al camión, o escriba la marca y la cantidad y toque <b>Agregar al camión</b>.</li>
         <li>Al terminar, toque <b>Enviar</b> y mande la carga por WhatsApp.</li>
+      </ol>
+      <ol id="emptyF" hidden>
+        <li>Elija la obra arriba. Abajo aparecen las piezas que aún no están en ninguna orden.</li>
+        <li>Toque <b>+</b> en cada pieza que entra a fabricación, o escriba la marca y la cantidad.</li>
+        <li>Complete <b>Datos de la orden</b> (entrega, taller) y toque <b>Enviar</b>.</li>
       </ol>
     </div>
   </section>
 
   <section class="panel send" id="sendBox" hidden aria-label="Enviar carga">
-    <h2>Enviar a oficina</h2>
+    <h2 id="sendTit">Enviar a oficina</h2>
     <div class="note">Este es el mensaje que recibirá la oficina. Envíelo tal cual.</div>
     <textarea id="msg" readonly></textarea>
     <div class="actions">
@@ -304,7 +329,11 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
 
 <script>
 (function(){
-  const KEY = "cargaCamion.v1";
+  const KEY_D = "cargaCamion.v1", KEY_F = "ordenFab.v1", KEY_M = "app.modo";
+  let modo = "D";
+  try{ modo = localStorage.getItem(KEY_M)==="F" ? "F" : "D"; }catch(e){}
+  let KEY = modo==="F" ? KEY_F : KEY_D;
+  const esF = () => modo==="F";
   const $ = id => document.getElementById(id);
   const fmt = n => Math.round(n).toLocaleString("es-CL");
   const fmt1 = n => (+n||0).toLocaleString("es-CL",{maximumFractionDigits:1});
@@ -319,10 +348,12 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
       camion: prev ? {proyecto:prev.camion.proyecto, por:prev.camion.por, patente:"", transp:"", chofer:"", rut:"", folio:"", obs:""}
                    : {proyecto:"", por:"", patente:"", transp:"", chofer:"", rut:"", folio:"", obs:""},
       lista: prev ? prev.lista : null,
-      obra: prev ? (prev.obra || "") : ""
+      obra: prev ? (prev.obra || "") : "",
+      of: {entrega:"", taller: prev && prev.of ? prev.of.taller : "", resp: prev && prev.of ? prev.of.resp : "",
+           por: prev && prev.of ? prev.of.por : "", obs:""}
     };
   }
-  function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); return s && s.camion ? s : null; }catch(e){ return null; } }
+  function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && s.camion){ if(!s.of) s.of={entrega:"",taller:"",resp:"",por:"",obs:""}; return s; } return null; }catch(e){ return null; } }
   function saveLocal(){ try{ localStorage.setItem(KEY, JSON.stringify(st)); }catch(e){} }
   function save(){ st.ts = Date.now(); saveLocal(); queueCloud(); }
 
@@ -382,6 +413,48 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
     st.camion[k] = k==="patente" ? e.target.value.toUpperCase() : e.target.value; save(); sumCamion(); }); }
   $("camion").open = !st.camion.patente;
 
+  // ---- Datos de la orden de fabricación ----
+  const camposF = {entrega:"f_entrega", taller:"f_taller", resp:"f_resp", por:"f_por", obs:"f_obs"};
+  function fillOF(){ for(const k in camposF) $(camposF[k]).value = st.of[k] || ""; sumOF(); }
+  function fechaCorta(iso){ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||""); return m ? m[3]+"-"+m[2]+"-"+m[1] : ""; }
+  function sumOF(){
+    const o = st.of, parts = [o.entrega ? "Entrega "+fechaCorta(o.entrega) : "", o.taller].filter(Boolean);
+    $("ofSum").textContent = parts.length ? parts.join(" · ") : "Toque para completar";
+  }
+  for(const k in camposF){ $(camposF[k]).addEventListener("input", e=>{ st.of[k] = e.target.value; save(); sumOF(); }); }
+
+  const TXT = {
+    D:{titulo:"Carga de camión", add:"Agregar al camión", lista:"En el camión", vacio:"Todavía no hay piezas cargadas.",
+       disp:"Despachables de la obra", send:"Enviar a oficina", nuevo:"Nueva carga", dispN:"disp.", cant:"disponibles"},
+    F:{titulo:"Orden de fabricación", add:"Agregar a la orden", lista:"En la orden", vacio:"Todavía no hay piezas en la orden.",
+       disp:"Por ordenar (sin OF)", send:"Enviar orden a oficina", nuevo:"Nueva orden", dispN:"por ord.", cant:"por ordenar"}
+  };
+  function aplicarModoUI(){
+    const t = TXT[modo];
+    document.title = t.titulo;
+    $("titulo").textContent = t.titulo; $("btnAdd").textContent = t.add; $("listTit").textContent = t.lista;
+    $("emptyTit").textContent = t.vacio; $("dispTit").textContent = t.disp; $("sendTit").textContent = t.send;
+    $("btnNew").textContent = t.nuevo;
+    $("emptyD").hidden = esF(); $("emptyF").hidden = !esF();
+    $("camion").hidden = esF(); $("ofHead").hidden = !esF(); $("listaBox").hidden = esF();
+    $("mDesp").setAttribute("aria-pressed", String(!esF())); $("mFab").setAttribute("aria-pressed", String(esF()));
+    if(esF()) $("ofHead").open = !st.of.entrega && !st.items.length;
+  }
+  function cambiarModo(m){
+    if(m===modo) return;
+    saveLocal();
+    modo = m; KEY = esF() ? KEY_F : KEY_D;
+    try{ localStorage.setItem(KEY_M, modo); }catch(e){}
+    st = load() || fresh();
+    $("sendBox").hidden = true; $("dispQ").value = ""; mInp.value = ""; $("sugs").innerHTML = ""; $("info").textContent = "";
+    aplicarModoUI(); fillCamion(); fillOF();
+    if(st.obra && datos && datos.obras.some(o=>o.c===st.obra)){ $("selObra").value = st.obra; aplicarObra(st.obra, true); }
+    else { $("selObra").value = st.obra || ""; listaUI(); poblarZonas(); render(); }
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+  $("mDesp").addEventListener("click", ()=>cambiarModo("D"));
+  $("mFab").addEventListener("click", ()=>cambiarModo("F"));
+
   // ---- Piece list (optional) ----
   function parseLista(txt){
     const i = txt.indexOf("#LISTA"); if(i<0) return null;
@@ -426,7 +499,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
       const p = L.piezas[m];
       if(p){
         const ya = cargado(m), libre = p.d - ya;
-        el.textContent = (p.desc ? p.desc+" · " : "") + p.kg.toLocaleString("es-CL",{maximumFractionDigits:1}) + " kg/u · disponibles " + p.d + (ya? " (ya en camión "+ya+")" : "");
+        el.textContent = (p.desc ? p.desc+" · " : "") + p.kg.toLocaleString("es-CL",{maximumFractionDigits:1}) + " kg/u · " + TXT[modo].cant + " " + p.d + (ya? " (ya " + (esF() ? "en la orden " : "en camión ") + ya + ")" : "");
         if(libre<=0) el.className="info bad";
       } else {
         const hits = Object.keys(L.piezas).filter(k=>k.includes(m)).sort((a,b)=>(a.indexOf(m)-b.indexOf(m))||a.localeCompare(b)).slice(0,8);
@@ -442,7 +515,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
   $("btnAdd").addEventListener("click", add);
 
   function nuevoId(){ const d=new Date(), p=n=>String(n).padStart(2,"0");
-    return "M"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())+"-"+Math.floor(Math.random()*1000); }
+    return (esF() ? "F" : "M")+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())+"-"+Math.floor(Math.random()*1000); }
   function add(){
     const m = norm(mInp.value);
     if(!m){ $("info").className="info bad"; $("info").textContent="Escriba la marca de la pieza."; mInp.focus(); return; }
@@ -455,7 +528,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
     if(it) it.q += q; else st.items.unshift({m, q});
     save(); render();
     const p = st.lista && st.lista.piezas[m];
-    toast(m+" × "+q+" agregada" + (p && cargado(m)>p.d ? " (supera disponibles)" : ""));
+    toast(m+" × "+q+" agregada" + (p && cargado(m)>p.d ? " (supera " + TXT[modo].cant + ")" : ""));
     $("sendBox").hidden = true;
   }
 
@@ -472,7 +545,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
       const mk = document.createElement("div"); mk.className="it-mark"; mk.textContent=it.m;
       const sub = document.createElement("div"); sub.className="it-sub";
       if(L && !p){ sub.className="it-sub warn"; sub.textContent="No está en la lista"; }
-      else if(p && it.q>p.d){ sub.className="it-sub bad"; sub.textContent="Excede disponibles ("+p.d+")"; }
+      else if(p && it.q>p.d){ sub.className="it-sub bad"; sub.textContent="Excede " + TXT[modo].cant + " ("+p.d+")"; }
       else if(p){ sub.textContent=(p.desc||"")+(p.desc?" · ":"")+fmt(p.kg*it.q)+" kg"; }
       main.append(mk, sub);
       const qd = document.createElement("div"); qd.className="it-qty";
@@ -490,9 +563,9 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
     $("listCount").textContent = st.items.length + (st.items.length===1?" marca":" marcas");
     $("tPzs").textContent = pzs;
     $("tKg").textContent = kgOk ? fmt(kg) : "–";
-    const over = kgOk && L.maxKg>0 && kg>L.maxKg;
+    const over = !esF() && kgOk && L.maxKg>0 && kg>L.maxKg;
     $("tKgBox").classList.toggle("over", over);
-    $("tKgLbl").textContent = over ? "kg · excede "+fmt(L.maxKg) : (kgOk && L.maxKg ? "kg de "+fmt(L.maxKg) : "kg");
+    $("tKgLbl").textContent = over ? "kg · excede "+fmt(L.maxKg) : (!esF() && kgOk && L.maxKg ? "kg de "+fmt(L.maxKg) : "kg");
     if(!$("sendBox").hidden) buildMsg();
     renderDisp();
   }
@@ -513,12 +586,18 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
   function fechaTxt(){ const d=new Date(), p=n=>String(n).padStart(2,"0");
     return p(d.getDate())+"-"+p(d.getMonth()+1)+"-"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes()); }
   function buildMsg(){
-    const c = st.camion, L = st.lista, lines = ["#CARGA v1", "ID: "+st.id];
+    const c = st.camion, L = st.lista, lines = [esF() ? "#OF v1" : "#CARGA v1", "ID: "+st.id];
     const add = (k,v)=>{ v=(v||"").replace(/\s*\n\s*/g," ").trim(); if(v) lines.push(k+": "+v); };
     add("Proyecto", (L && L.proy) || c.proyecto);
     add("Fecha", fechaTxt());
-    add("Cargado por", c.por); add("Patente", c.patente); add("Transportista", c.transp);
-    add("Chofer", c.chofer); add("RUT chofer", c.rut); add("Folio guia", c.folio); add("Obs", c.obs);
+    if(esF()){
+      const o = st.of;
+      add("Entrega", fechaCorta(o.entrega)); add("Taller", o.taller); add("Responsable", o.resp);
+      add("Emitida por", o.por); add("Obs", o.obs);
+    } else {
+      add("Cargado por", c.por); add("Patente", c.patente); add("Transportista", c.transp);
+      add("Chofer", c.chofer); add("RUT chofer", c.rut); add("Folio guia", c.folio); add("Obs", c.obs);
+    }
     lines.push("---");
     let pzs=0, kg=0;
     st.items.slice().reverse().forEach(it=>{ lines.push(it.m+" x "+it.q); pzs+=it.q; const p=L&&L.piezas[it.m]; if(p) kg+=p.kg*it.q; });
@@ -530,13 +609,14 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
     return txt;
   }
   $("btnSend").addEventListener("click", ()=>{
-    if(!st.items.length){ toast("No hay piezas cargadas"); mInp.focus(); return; }
+    if(!st.items.length){ toast(esF() ? "La orden no tiene piezas" : "No hay piezas cargadas"); mInp.focus(); return; }
     const faltan = [];
-    if(!((st.lista && st.lista.proy) || st.camion.proyecto)) faltan.push("proyecto");
-    if(!st.camion.patente) faltan.push("patente");
+    if(!((st.lista && st.lista.proy) || st.camion.proyecto)) faltan.push("obra");
+    if(esF()){ if(!st.of.entrega) faltan.push("fecha de entrega"); }
+    else if(!st.camion.patente) faltan.push("patente");
     buildMsg();
     $("sendBox").hidden=false;
-    if(faltan.length){ $("camion").open=true; toast("Falta: "+faltan.join(" y ")+" (puede enviar igual)"); }
+    if(faltan.length){ $(esF() ? "ofHead" : "camion").open=true; toast("Falta: "+faltan.join(" y ")+" (puede enviar igual)"); }
     $("sendBox").scrollIntoView({behavior:"smooth", block:"start"});
   });
   $("btnCopy").addEventListener("click", ()=>{
@@ -551,11 +631,11 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
   $("btnFile").textContent = "Compartir archivo";
   $("btnFile").addEventListener("click", async ()=>{
     const d=new Date(), p=n=>String(n).padStart(2,"0");
-    const name = "carga_"+(st.camion.patente||"camion").replace(/[^A-Za-z0-9-]/g,"")+"_"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"_"+p(d.getHours())+p(d.getMinutes())+".txt";
+    const name = (esF() ? "orden_"+(st.obra||"obra") : "carga_"+(st.camion.patente||"camion")).replace(/[^A-Za-z0-9-]/g,"")+"_"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"_"+p(d.getHours())+p(d.getMinutes())+".txt";
     const txt = buildMsg();
     try{
       const file = new File([txt], name, {type:"text/plain"});
-      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:"Carga de camión"}); return; }
+      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:TXT[modo].titulo}); return; }
     }catch(e){ if(e && e.name==="AbortError") return; }
     const url = URL.createObjectURL(new Blob([txt], {type:"text/plain"}));
     const a = document.createElement("a"); a.href=url; a.download=name; document.body.append(a); a.click(); a.remove();
@@ -564,11 +644,11 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
   });
   let armed=false, at;
   $("btnNew").addEventListener("click", ()=>{
-    if(!armed){ armed=true; $("btnNew").textContent="Toque otra vez para borrar esta carga"; clearTimeout(at);
-      at=setTimeout(()=>{ armed=false; $("btnNew").textContent="Nueva carga"; }, 4000); return; }
-    armed=false; $("btnNew").textContent="Nueva carga";
-    st = fresh(true); save(); fillCamion(); render(); $("sendBox").hidden=true; $("camion").open=true;
-    window.scrollTo({top:0, behavior:"smooth"}); toast("Lista vacía. Lista para el próximo camión.");
+    if(!armed){ armed=true; $("btnNew").textContent = esF() ? "Toque otra vez para borrar esta orden" : "Toque otra vez para borrar esta carga"; clearTimeout(at);
+      at=setTimeout(()=>{ armed=false; $("btnNew").textContent=TXT[modo].nuevo; }, 4000); return; }
+    armed=false; $("btnNew").textContent=TXT[modo].nuevo;
+    st = fresh(true); save(); fillCamion(); fillOF(); render(); $("sendBox").hidden=true; $(esF() ? "ofHead" : "camion").open=true;
+    window.scrollTo({top:0, behavior:"smooth"}); toast(esF() ? "Orden vacía. Lista para la próxima." : "Lista vacía. Lista para el próximo camión.");
   });
 
   // Keep screen on while loading (optional)
@@ -588,7 +668,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
   function syncMsg(t, cls){ const el=$("syncInfo"); el.className = "info" + (cls ? " "+cls : ""); el.textContent = t; }
   function obraALista(o){
     const L = {proy:o.c, nombre:o.n||"", maxKg:(datos && datos.maxKg)||0, piezas:{}};
-    (o.p||[]).forEach(p=>{ L.piezas[norm(p[0])] = {d:+p[1]||0, kg:+p[2]||0, z:p[3]||"", desc:p[4]||"", pl:p[5]||""}; });
+    (esF() ? (o.o||[]) : (o.p||[])).forEach(p=>{ L.piezas[norm(p[0])] = {d:+p[1]||0, kg:+p[2]||0, z:p[3]||"", desc:p[4]||"", pl:p[5]||""}; });
     return L;
   }
   function poblarObras(){
@@ -597,7 +677,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
     o0.textContent = datos && datos.obras.length ? "Elija la obra…" : (clave ? "Sin obras publicadas" : "Sin conexión con la oficina");
     sel.append(o0);
     if(datos) datos.obras.forEach(o=>{ const op=document.createElement("option"); op.value=o.c;
-      op.textContent = o.c + (o.n ? " · "+o.n : "") + " (" + (o.p||[]).length + ")"; sel.append(op); });
+      op.textContent = o.c + (o.n ? " · "+o.n : ""); sel.append(op); });
     if(st.obra && datos && datos.obras.some(o=>o.c===st.obra)){ sel.value = st.obra; aplicarObra(st.obra, true); }
   }
   function aplicarObra(cod, silencioso){
@@ -605,11 +685,11 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
     if(!o) return;
     st.obra = cod; st.lista = obraALista(o); st.camion.proyecto = cod;
     save(); fillCamion(); listaUI(); poblarZonas(); render();
-    if(!silencioso) toast("Obra " + cod + ": " + Object.keys(st.lista.piezas).length + " marcas despachables");
+    if(!silencioso) toast("Obra " + cod + ": " + Object.keys(st.lista.piezas).length + (esF() ? " marcas por ordenar" : " marcas despachables"));
   }
   $("selObra").addEventListener("change", e=>{
     const v = e.target.value;
-    if(st.items.length && v !== st.obra){ e.target.value = st.obra || ""; toast("Envíe o borre la carga actual antes de cambiar de obra"); return; }
+    if(st.items.length && v !== st.obra){ e.target.value = st.obra || ""; toast(esF() ? "Envíe o borre la orden actual antes de cambiar de obra" : "Envíe o borre la carga actual antes de cambiar de obra"); return; }
     if(!v){ st.obra=""; st.lista=null; save(); listaUI(); poblarZonas(); render(); return; }
     aplicarObra(v);
   });
@@ -683,7 +763,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
       main.addEventListener("click", ()=>{ mInp.value=k; qInp.value=Math.max(1, libre); showInfo(); mInp.scrollIntoView({behavior:"smooth", block:"center"}); });
       const n = document.createElement("div"); n.className="disp-n";
       const b = document.createElement("b"); b.textContent = Math.max(0, libre);
-      const sm = document.createElement("small"); sm.textContent = ya ? "quedan de "+p.d : "disp.";
+      const sm = document.createElement("small"); sm.textContent = ya ? "quedan de "+p.d : TXT[modo].dispN;
       n.append(b, sm);
       const ad = document.createElement("button"); ad.type="button"; ad.className="disp-add"; ad.textContent="+";
       ad.setAttribute("aria-label", "Agregar una " + k); ad.disabled = libre<=0;
@@ -706,7 +786,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
   if(enApp) $("atajo").open = true;
 
   setSaved("telefono");
-  fillCamion(); listaUI(); poblarZonas(); render();
+  aplicarModoUI(); fillCamion(); fillOF(); listaUI(); poblarZonas(); render();
   poblarObras();
   bajarDatos();
 })();
