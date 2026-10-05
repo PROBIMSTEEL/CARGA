@@ -127,6 +127,25 @@ ul.items li:first-child{border-top:0}
 a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
 .note{font-size:.8rem;color:var(--muted)}
 
+.obra{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.obra-row{display:flex;gap:10px;align-items:flex-end}
+label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;min-width:0;text-transform:none;letter-spacing:0}
+.obra .btn{padding:11px 14px;font-size:.95rem}
+.info.ok{color:var(--ok)}
+.clave{display:flex;gap:8px}
+.clave input{flex:1;min-width:0;font-size:1rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+.clave .btn{padding:10px 14px}
+.disp-filt{display:grid;grid-template-columns:1fr auto;gap:8px;padding:0 14px 10px}
+.disp-filt input,.disp-filt select{font-size:1rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;min-width:0}
+.disp-filt select{max-width:9.5em}
+#dispList{max-height:60vh;overflow-y:auto;border-top:1px solid var(--line)}
+.disp-main{background:none;border:0;text-align:left;padding:0;color:inherit;min-width:0}
+.disp-n{display:flex;flex-direction:column;align-items:flex-end;line-height:1.05}
+.disp-n b{font-family:var(--font-display);font-size:1.35rem;font-variant-numeric:tabular-nums}
+.disp-n small{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.disp-add{width:44px;height:44px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-ink);font-size:1.5rem;font-weight:700}
+.disp-add:disabled{background:var(--chip);color:var(--muted)}
+#dispList li.done .it-mark{color:var(--muted);text-decoration:line-through}
 .saved{font-size:.75rem;color:var(--warn);margin-top:4px}
 .saved.on{color:var(--ok)}
 .pasos{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
@@ -151,6 +170,20 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
     </div>
     <button class="pill" id="pillLista" type="button" aria-controls="listaBox">Sin lista de piezas</button>
   </header>
+
+  <section class="panel obra" aria-label="Obra">
+    <div class="obra-row">
+      <label class="f" for="selObra" style="flex:1;min-width:0">Obra
+        <select id="selObra"><option value="">Cargando obras…</option></select>
+      </label>
+      <button class="btn ghost" id="btnSync" type="button">Actualizar</button>
+    </div>
+    <div class="info" id="syncInfo"></div>
+    <div class="clave" id="claveBox" hidden>
+      <input id="claveTxt" placeholder="Pegue aquí el enlace de la oficina" autocomplete="off">
+      <button class="btn primary" id="btnClave" type="button">Usar</button>
+    </div>
+  </section>
 
   <details class="panel" id="camion">
     <summary>Datos del camión <span class="sum" id="camionSum">Toque para completar</span></summary>
@@ -186,6 +219,16 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
     <button class="btn primary big" id="btnAdd" type="button">Agregar al camión</button>
   </section>
 
+  <details class="panel disp" id="dispBox" open hidden>
+    <summary>Despachables de la obra <span class="sum" id="dispCount"></span></summary>
+    <div class="disp-filt">
+      <input id="dispQ" type="search" placeholder="Buscar marca o descripción" autocomplete="off">
+      <select id="dispZona" aria-label="Zona"></select>
+    </div>
+    <ul class="items" id="dispList"></ul>
+    <div class="note" id="dispMore" style="padding:6px 14px 12px"></div>
+  </details>
+
   <section class="panel" aria-label="Piezas cargadas">
     <div class="list-head" style="padding:12px 14px 4px">
       <h2>En el camión</h2><span id="listCount">0 marcas</span>
@@ -194,8 +237,8 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
     <div class="empty" id="empty">
       Todavía no hay piezas cargadas.
       <ol>
-        <li>Escriba la marca de la pieza y la cantidad.</li>
-        <li>Toque <b>Agregar al camión</b>. Si repite una marca, se suma.</li>
+        <li>Elija la obra arriba. Abajo aparecen sus piezas despachables.</li>
+        <li>Toque <b>+</b> en cada pieza que sube al camión, o escriba la marca y la cantidad y toque <b>Agregar al camión</b>.</li>
         <li>Al terminar, toque <b>Enviar</b> y mande la carga por WhatsApp.</li>
       </ol>
     </div>
@@ -215,7 +258,7 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
   </section>
 
   <details class="panel lista" id="listaBox">
-    <summary>Lista de piezas (opcional) <span class="sum" id="listaSum">Para sugerir marcas y calcular kg</span></summary>
+    <summary>Lista pegada (respaldo) <span class="sum" id="listaSum">Solo si no hay conexión</span></summary>
     <div class="body">
       <div class="note">La oficina le envía un mensaje que empieza con <b>#LISTA</b>. Cópielo completo y péguelo aquí.</div>
       <textarea id="listaTxt" placeholder="Pegue aquí el mensaje #LISTA"></textarea>
@@ -232,13 +275,13 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
     <div class="body">
       <div class="aviso" id="avisoApp" hidden>Está abriendo la app dentro de WhatsApp. Ahí la carga no queda guardada. Use el menú (⋮ o ···) y elija <b>Abrir en el navegador</b>; luego cree el acceso directo.</div>
       <ol class="pasos" id="pasosAndroid">
-        <li>Abra este enlace en <b>Chrome</b>, no dentro de WhatsApp.</li>
+        <li>Abra el enlace que le envió la oficina en <b>Chrome</b>, no dentro de WhatsApp.</li>
         <li>Toque el menú <b>⋮</b> arriba a la derecha.</li>
         <li>Elija <b>Agregar a pantalla principal</b> (o <b>Instalar</b>) y confirme.</li>
         <li>Desde ahora abra la app siempre con ese ícono.</li>
       </ol>
       <ol class="pasos" id="pasosIOS" hidden>
-        <li>Abra este enlace en <b>Safari</b>, no dentro de WhatsApp.</li>
+        <li>Abra el enlace que le envió la oficina en <b>Safari</b>, no dentro de WhatsApp.</li>
         <li>Toque <b>Compartir</b> (el cuadrado con la flecha hacia arriba).</li>
         <li>Elija <b>Agregar a inicio</b> y toque <b>Agregar</b>.</li>
         <li>Desde ahora abra la app siempre con ese ícono.</li>
@@ -264,6 +307,7 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
   const KEY = "cargaCamion.v1";
   const $ = id => document.getElementById(id);
   const fmt = n => Math.round(n).toLocaleString("es-CL");
+  const fmt1 = n => (+n||0).toLocaleString("es-CL",{maximumFractionDigits:1});
   const norm = s => (s||"").toUpperCase().replace(/\s+/g," ").trim();
 
   let st = load() || fresh();
@@ -274,7 +318,8 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
       items: [],
       camion: prev ? {proyecto:prev.camion.proyecto, por:prev.camion.por, patente:"", transp:"", chofer:"", rut:"", folio:"", obs:""}
                    : {proyecto:"", por:"", patente:"", transp:"", chofer:"", rut:"", folio:"", obs:""},
-      lista: prev ? prev.lista : null
+      lista: prev ? prev.lista : null,
+      obra: prev ? (prev.obra || "") : ""
     };
   }
   function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); return s && s.camion ? s : null; }catch(e){ return null; } }
@@ -353,18 +398,18 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
     const L = st.lista, n = L ? Object.keys(L.piezas).length : 0;
     $("pillLista").textContent = L ? n + " marcas en lista" : "Sin lista de piezas";
     $("pillLista").classList.toggle("on", !!L);
-    $("listaSum").textContent = L ? (L.proy + " · " + n + " marcas") : "Para sugerir marcas y calcular kg";
+    $("listaSum").textContent = st.obra ? "No necesaria: obra cargada" : (L ? (L.proy + " · " + n + " marcas") : "Solo si no hay conexión");
     $("btnListaDel").hidden = !L;
   }
   $("pillLista").addEventListener("click", ()=>{ $("listaBox").open = true; $("listaBox").scrollIntoView({behavior:"smooth"}); });
   $("btnLista").addEventListener("click", ()=>{
     const L = parseLista($("listaTxt").value);
     if(!L){ $("listaInfo").className="info bad"; $("listaInfo").textContent="No se reconoce la lista. Pegue el mensaje completo, desde #LISTA."; return; }
-    st.lista = L; if(L.proy) st.camion.proyecto = L.proy;
+    st.lista = L; st.obra = ""; $("selObra").value = ""; if(L.proy) st.camion.proyecto = L.proy;
     save(); $("listaTxt").value=""; $("listaInfo").className="info"; $("listaInfo").textContent="Lista cargada: "+Object.keys(L.piezas).length+" marcas.";
     fillCamion(); listaUI(); render(); $("listaBox").open=false; $("marca").focus();
   });
-  $("btnListaDel").addEventListener("click", ()=>{ st.lista=null; save(); listaUI(); render(); $("listaInfo").textContent="Lista quitada."; });
+  $("btnListaDel").addEventListener("click", ()=>{ st.lista=null; st.obra=""; $("selObra").value=""; save(); listaUI(); poblarZonas(); render(); $("listaInfo").textContent="Lista quitada."; });
 
   // ---- Entry ----
   const mInp = $("marca"), qInp = $("cant");
@@ -401,13 +446,16 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
   function add(){
     const m = norm(mInp.value);
     if(!m){ $("info").className="info bad"; $("info").textContent="Escriba la marca de la pieza."; mInp.focus(); return; }
-    const q = qVal();
+    addItem(m, qVal());
+    mInp.value=""; qInp.value=1; $("sugs").innerHTML=""; $("info").textContent=""; mInp.focus();
+  }
+  function addItem(m, q){
     if(!st.id) st.id = nuevoId();
     const it = st.items.find(x=>x.m===m);
     if(it) it.q += q; else st.items.unshift({m, q});
     save(); render();
-    toast(m+" × "+q+" agregada");
-    mInp.value=""; qInp.value=1; $("sugs").innerHTML=""; $("info").textContent=""; mInp.focus();
+    const p = st.lista && st.lista.piezas[m];
+    toast(m+" × "+q+" agregada" + (p && cargado(m)>p.d ? " (supera disponibles)" : ""));
     $("sendBox").hidden = true;
   }
 
@@ -446,6 +494,7 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
     $("tKgBox").classList.toggle("over", over);
     $("tKgLbl").textContent = over ? "kg · excede "+fmt(L.maxKg) : (kgOk && L.maxKg ? "kg de "+fmt(L.maxKg) : "kg");
     if(!$("sendBox").hidden) buildMsg();
+    renderDisp();
   }
   let undoBuf=null;
   function quitar(idx){
@@ -526,6 +575,128 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
   async function wake(){ try{ if(navigator.wakeLock && document.visibilityState==="visible") await navigator.wakeLock.request("screen"); }catch(e){} }
   document.addEventListener("visibilitychange", wake); wake();
 
+  // ---- Base de datos de la oficina: obras y piezas despachables ----
+  const KK = "cargaCamion.k", KD = "cargaCamion.datos";
+  let clave = "", datos = null;
+  try{
+    const q = new URLSearchParams(location.search).get("k");
+    if(q){ clave = q.trim(); localStorage.setItem(KK, clave); } else clave = localStorage.getItem(KK) || "";
+  }catch(e){ clave = new URLSearchParams(location.search).get("k") || ""; }
+  try{ datos = JSON.parse(localStorage.getItem(KD)); }catch(e){ datos = null; }
+  if(datos && !Array.isArray(datos.obras)) datos = null;
+
+  function syncMsg(t, cls){ const el=$("syncInfo"); el.className = "info" + (cls ? " "+cls : ""); el.textContent = t; }
+  function obraALista(o){
+    const L = {proy:o.c, nombre:o.n||"", maxKg:(datos && datos.maxKg)||0, piezas:{}};
+    (o.p||[]).forEach(p=>{ L.piezas[norm(p[0])] = {d:+p[1]||0, kg:+p[2]||0, z:p[3]||"", desc:p[4]||"", pl:p[5]||""}; });
+    return L;
+  }
+  function poblarObras(){
+    const sel = $("selObra"); sel.innerHTML = "";
+    const o0 = document.createElement("option"); o0.value = "";
+    o0.textContent = datos && datos.obras.length ? "Elija la obra…" : (clave ? "Sin obras publicadas" : "Sin conexión con la oficina");
+    sel.append(o0);
+    if(datos) datos.obras.forEach(o=>{ const op=document.createElement("option"); op.value=o.c;
+      op.textContent = o.c + (o.n ? " · "+o.n : "") + " (" + (o.p||[]).length + ")"; sel.append(op); });
+    if(st.obra && datos && datos.obras.some(o=>o.c===st.obra)){ sel.value = st.obra; aplicarObra(st.obra, true); }
+  }
+  function aplicarObra(cod, silencioso){
+    const o = datos && datos.obras.find(x=>x.c===cod);
+    if(!o) return;
+    st.obra = cod; st.lista = obraALista(o); st.camion.proyecto = cod;
+    save(); fillCamion(); listaUI(); poblarZonas(); render();
+    if(!silencioso) toast("Obra " + cod + ": " + Object.keys(st.lista.piezas).length + " marcas despachables");
+  }
+  $("selObra").addEventListener("change", e=>{
+    const v = e.target.value;
+    if(st.items.length && v !== st.obra){ e.target.value = st.obra || ""; toast("Envíe o borre la carga actual antes de cambiar de obra"); return; }
+    if(!v){ st.obra=""; st.lista=null; save(); listaUI(); poblarZonas(); render(); return; }
+    aplicarObra(v);
+  });
+  function descifrar(buf){
+    const k = new TextEncoder().encode(clave), n = k.length, out = new Uint8Array(buf.length);
+    for(let i=0;i<buf.length;i++) out[i] = buf[i] ^ k[i%n] ^ ((i*7+13) & 255);
+    return JSON.parse(new TextDecoder("utf-8").decode(out));
+  }
+  let bajando = false;
+  async function bajarDatos(){
+    if(!clave){ $("claveBox").hidden = false; syncMsg("Falta la clave de la oficina. Pegue abajo el enlace que le enviaron.", "warn"); return; }
+    if(bajando) return;
+    bajando = true; $("claveBox").hidden = true; syncMsg("Actualizando datos de la oficina…");
+    try{
+      const r = await fetch("data/datos.bin?t=" + Date.now(), {cache:"no-store"});
+      if(!r.ok) throw new Error(r.status===404 ? "La oficina aún no ha publicado datos." : "No se pudo descargar (" + r.status + ").");
+      let D;
+      try{ D = descifrar(new Uint8Array(await r.arrayBuffer())); }
+      catch(e){ $("claveBox").hidden = false; throw new Error("La clave no corresponde. Pida a la oficina el enlace actualizado."); }
+      if(!D || !Array.isArray(D.obras)) throw new Error("Los datos recibidos no son válidos.");
+      datos = D; try{ localStorage.setItem(KD, JSON.stringify(D)); }catch(e){}
+      poblarObras();
+      syncMsg("Datos de la oficina del " + D.generado, "ok");
+    }catch(e){
+      const m = (e && e.message && !/fetch|network/i.test(e.message)) ? e.message : "Sin conexión.";
+      if(datos){ poblarObras(); syncMsg(m + " Se usan los datos guardados del " + datos.generado + ".", "warn"); }
+      else { poblarObras(); syncMsg(m, "bad"); }
+    }
+    bajando = false;
+  }
+  $("btnSync").addEventListener("click", bajarDatos);
+  $("btnClave").addEventListener("click", ()=>{
+    const t = $("claveTxt").value.trim(), m = t.match(/[?&]k=([A-Za-z0-9]+)/);
+    const k = m ? m[1] : (/^[A-Za-z0-9]{8,}$/.test(t) ? t : "");
+    if(!k){ syncMsg("No se reconoce la clave. Pegue el enlace completo que le envió la oficina.", "bad"); return; }
+    clave = k; try{ localStorage.setItem(KK, k); }catch(e){}
+    $("claveTxt").value = ""; bajarDatos();
+  });
+  let ultimaBajada = Date.now();
+  document.addEventListener("visibilitychange", ()=>{
+    if(document.visibilityState==="visible" && clave && Date.now()-ultimaBajada > 60000){ ultimaBajada = Date.now(); bajarDatos(); }
+  });
+
+  // ---- Lista de despachables ----
+  function poblarZonas(){
+    const sel = $("dispZona"), cur = sel.value; sel.innerHTML = "";
+    const o = document.createElement("option"); o.value = ""; o.textContent = "Todas las zonas"; sel.append(o);
+    if(st.lista){
+      [...new Set(Object.values(st.lista.piezas).map(p=>p.z).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es",{numeric:true}))
+        .forEach(z=>{ const op=document.createElement("option"); op.value=z; op.textContent="Zona "+z; sel.append(op); });
+    }
+    sel.value = [...sel.options].some(x=>x.value===cur) ? cur : "";
+  }
+  function renderDisp(){
+    const box = $("dispBox"), L = st.lista;
+    box.hidden = !L;
+    if(!L) return;
+    const q = norm($("dispQ").value), z = $("dispZona").value, ul = $("dispList");
+    ul.innerHTML = "";
+    let keys = Object.keys(L.piezas).sort((a,b)=>a.localeCompare(b,"es",{numeric:true}));
+    if(z) keys = keys.filter(k=>L.piezas[k].z===z);
+    if(q) keys = keys.filter(k=>k.includes(q) || norm(L.piezas[k].desc).includes(q));
+    keys.slice(0,150).forEach(k=>{
+      const p = L.piezas[k], ya = cargado(k), libre = p.d - ya;
+      const li = document.createElement("li"); if(libre<=0) li.className = "done";
+      const main = document.createElement("button"); main.type="button"; main.className="it-main disp-main";
+      const mk = document.createElement("div"); mk.className="it-mark"; mk.textContent=k;
+      const sub = document.createElement("div"); sub.className="it-sub";
+      sub.textContent = [p.desc, p.z ? "Zona "+p.z : "", fmt1(p.kg)+" kg/u"].filter(Boolean).join(" · ");
+      main.append(mk, sub);
+      main.addEventListener("click", ()=>{ mInp.value=k; qInp.value=Math.max(1, libre); showInfo(); mInp.scrollIntoView({behavior:"smooth", block:"center"}); });
+      const n = document.createElement("div"); n.className="disp-n";
+      const b = document.createElement("b"); b.textContent = Math.max(0, libre);
+      const sm = document.createElement("small"); sm.textContent = ya ? "quedan de "+p.d : "disp.";
+      n.append(b, sm);
+      const ad = document.createElement("button"); ad.type="button"; ad.className="disp-add"; ad.textContent="+";
+      ad.setAttribute("aria-label", "Agregar una " + k); ad.disabled = libre<=0;
+      ad.addEventListener("click", ()=>addItem(k, 1));
+      li.append(main, n, ad); ul.append(li);
+    });
+    $("dispCount").textContent = keys.length + " de " + Object.keys(L.piezas).length + " marcas";
+    $("dispMore").textContent = keys.length>150 ? "Se muestran 150. Use la búsqueda o la zona para ver el resto."
+                              : (keys.length ? "" : "Ninguna marca coincide.");
+  }
+  $("dispQ").addEventListener("input", renderDisp);
+  $("dispZona").addEventListener("change", renderDisp);
+
   // ---- Instrucciones de acceso directo según el teléfono ----
   const ua = navigator.userAgent || "";
   const esIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
@@ -535,7 +706,9 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
   if(enApp) $("atajo").open = true;
 
   setSaved("telefono");
-  fillCamion(); listaUI(); render();
+  fillCamion(); listaUI(); poblarZonas(); render();
+  poblarObras();
+  bajarDatos();
 })();
 </script>
 </body>

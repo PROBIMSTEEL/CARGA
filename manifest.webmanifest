@@ -1,8 +1,6 @@
 {
  "name": "Carga de Camión",
  "short_name": "Carga",
- "start_url": "./",
- "scope": "./",
  "display": "standalone",
  "background_color": "#e9ecef",
  "theme_color": "#b4442a",
