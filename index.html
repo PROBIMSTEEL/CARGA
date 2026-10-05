@@ -758,7 +758,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
 
   function syncMsg(t, cls){ const el=$("syncInfo"); el.className = "info" + (cls ? " "+cls : ""); el.textContent = t; }
   function obraALista(o){
-    const L = {proy:o.c, nombre:o.n||"", maxKg:(datos && datos.maxKg)||0, piezas:{}};
+    const L = {proy:o.c, nombre:o.n||"", maxKg:(datos && datos.maxKg)||0, piezas:{}, sinF: esF() && !Array.isArray(o.o)};
     const env = enviadasPend(modo, o.c);
     (esF() ? (o.o||[]) : (o.p||[])).forEach(p=>{ const k = norm(p[0]), e = env[k]||0;
       L.piezas[k] = {d:Math.max(0,(+p[1]||0)-e), kg:+p[2]||0, z:p[3]||"", desc:p[4]||"", pl:p[5]||"", env:e}; });
@@ -864,8 +864,11 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
       li.append(main, n, ad); ul.append(li);
     });
     $("dispCount").textContent = keys.length + " de " + Object.keys(L.piezas).length + " marcas";
-    $("dispMore").textContent = keys.length>150 ? "Se muestran 150. Use la búsqueda o la zona para ver el resto."
-                              : (keys.length ? "" : "Ninguna marca coincide.");
+    const total = Object.keys(L.piezas).length;
+    $("dispMore").textContent = L.sinF ? "Los datos de la oficina son de una versión anterior y no traen las piezas por ordenar. En Access presione \"Publicar datos al celular\" y luego toque Actualizar aquí."
+      : !total ? (esF() ? "Todas las piezas de esta obra ya están en órdenes de fabricación." : "Esta obra no tiene piezas liberadas pendientes de despacho.")
+      : keys.length>150 ? "Se muestran 150. Use la búsqueda o la zona para ver el resto."
+      : (keys.length ? "" : "Ninguna marca coincide.");
   }
   $("dispQ").addEventListener("input", renderDisp);
   $("dispZona").addEventListener("change", renderDisp);
