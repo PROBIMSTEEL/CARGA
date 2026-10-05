@@ -127,6 +127,15 @@ ul.items li:first-child{border-top:0}
 a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
 .note{font-size:.8rem;color:var(--muted)}
 
+.hist li{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.hist li:first-child{border-top:0}
+.hist .h-t{font-weight:600;font-size:.95rem}
+.hist .h-s{font-size:.8rem;color:var(--muted)}
+.hist .h-tag{display:inline-block;font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--chip);margin-right:6px}
+.hist .h-tag.f{color:var(--accent)}
+.hist .btn{padding:8px 12px;font-size:.9rem}
+.hist .ver{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px}
+.hist textarea{width:100%;min-height:150px;font-family:var(--font-mark);font-size:.8rem;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
 .modo{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--chip);padding:4px;border-radius:10px}
 .modo button{border:0;border-radius:8px;padding:10px 8px;font-family:var(--font-display);font-size:1.15rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;background:transparent;color:var(--muted)}
 .modo button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
@@ -271,7 +280,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
 
   <section class="panel send" id="sendBox" hidden aria-label="Enviar carga">
     <h2 id="sendTit">Enviar a oficina</h2>
-    <div class="note">Este es el mensaje que recibirá la oficina. Envíelo tal cual.</div>
+    <div class="note">Este es el mensaje que recibirá la oficina. Al enviarlo queda guardado en <b>Enviados</b> y el formulario se limpia para el siguiente.</div>
     <textarea id="msg" readonly></textarea>
     <div class="actions">
       <a class="btn primary full" id="btnWa" href="#" target="_blank" rel="noopener">Abrir en WhatsApp</a>
@@ -281,6 +290,19 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
     <div class="note">Si WhatsApp no se abre, toque <b>Copiar mensaje</b> y péguelo en el chat de la oficina.</div>
     <button class="btn ghost" id="btnNew" type="button">Nueva carga</button>
   </section>
+
+  <details class="panel hist" id="histBox">
+    <summary>Enviados <span class="sum" id="histSum">Ninguno todavía</span></summary>
+    <ul class="items" id="histList"></ul>
+    <div class="ver" id="histVer" hidden>
+      <textarea id="histMsg" readonly aria-label="Mensaje enviado"></textarea>
+      <div class="actions">
+        <a class="btn primary" id="histWa" href="#" target="_blank" rel="noopener">Reenviar por WhatsApp</a>
+        <button class="btn ghost" id="histCopy" type="button">Copiar</button>
+      </div>
+    </div>
+    <div class="ver"><button class="btn ghost" id="histDel" type="button">Borrar historial</button></div>
+  </details>
 
   <details class="panel lista" id="listaBox">
     <summary>Lista pegada (respaldo) <span class="sum" id="listaSum">Solo si no hay conexión</span></summary>
@@ -582,6 +604,74 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
   }
   $("toastUndo").addEventListener("click",()=>{ if(undoBuf){ st.items.splice(undoBuf.idx,0,undoBuf.it); undoBuf=null; save(); render(); } $("toast").hidden=true; });
 
+  // ---- Historial de enviados ----
+  const KH = "app.enviados";
+  let hist = [];
+  try{ hist = JSON.parse(localStorage.getItem(KH)) || []; }catch(e){ hist = []; }
+  if(!Array.isArray(hist)) hist = [];
+  function guardarHist(){ try{ localStorage.setItem(KH, JSON.stringify(hist.slice(0,50))); }catch(e){} }
+  function fechaGenerado(){
+    const m = datos && /^(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2})/.exec(datos.generado||"");
+    return m ? new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5]).getTime() : 0;
+  }
+  // Cantidades ya enviadas desde este teléfono que la oficina aún no refleja en los datos publicados
+  function enviadasPend(modoX, obra){
+    const desde = fechaGenerado(), r = {};
+    hist.forEach(h=>{ if(h.modo===modoX && h.obra===obra && h.ts > desde) (h.items||[]).forEach(it=>{ r[it.m] = (r[it.m]||0) + it.q; }); });
+    return r;
+  }
+  function registrarEnvio(){
+    if(!st.items.length) return;
+    if(!st.id) st.id = nuevoId();
+    if(hist.some(h=>h.id===st.id)) return;
+    const L = st.lista; let pzs=0, kg=0;
+    st.items.forEach(it=>{ pzs+=it.q; const p=L&&L.piezas[it.m]; if(p) kg+=p.kg*it.q; });
+    const det = esF() ? [st.of.entrega ? "Entrega "+fechaCorta(st.of.entrega) : "", st.of.taller].filter(Boolean).join(" · ")
+                      : [st.camion.patente, st.camion.chofer].filter(Boolean).join(" · ");
+    hist.unshift({id:st.id, modo, obra: st.obra || (L && L.proy) || st.camion.proyecto || "", ts: Date.now(), fecha: fechaTxt(),
+                  det, marcas: st.items.length, pzs, kg: L ? Math.round(kg) : null,
+                  items: st.items.map(it=>({m:it.m, q:it.q})), msg: buildMsg()});
+    guardarHist();
+    st = fresh(true); save();
+    if(st.obra && datos && datos.obras.some(o=>o.c===st.obra)) aplicarObra(st.obra, true);
+    fillCamion(); fillOF(); render(); renderHist();
+    $("sendBox").hidden = true;
+    toast(esF() ? "Orden guardada en Enviados. Formulario listo para la siguiente." : "Carga guardada en Enviados. Formulario listo para el próximo camión.");
+    setTimeout(()=>window.scrollTo({top:0, behavior:"smooth"}), 400);
+  }
+  function renderHist(){
+    const ul = $("histList"); ul.innerHTML = "";
+    $("histSum").textContent = hist.length ? hist.length + (hist.length===1 ? " envío" : " envíos") + " · último " + hist[0].fecha : "Ninguno todavía";
+    $("histDel").parentElement.hidden = !hist.length;
+    hist.slice(0,50).forEach(h=>{
+      const li = document.createElement("li");
+      const d = document.createElement("div"); d.style.minWidth = "0";
+      const t = document.createElement("div"); t.className = "h-t";
+      const tag = document.createElement("span"); tag.className = "h-tag" + (h.modo==="F" ? " f" : ""); tag.textContent = h.modo==="F" ? "OF" : "Despacho";
+      t.append(tag, h.obra || "(sin obra)");
+      const sub = document.createElement("div"); sub.className = "h-s";
+      sub.textContent = [h.fecha, h.det, h.marcas + (h.marcas===1 ? " marca, " : " marcas, ") + h.pzs + (h.pzs===1 ? " pza" : " pzs") + (h.kg!=null ? ", " + fmt(h.kg) + " kg" : "")].filter(Boolean).join(" · ");
+      d.append(t, sub);
+      const b = document.createElement("button"); b.type="button"; b.className="btn ghost"; b.textContent="Ver";
+      b.addEventListener("click", ()=>{ $("histMsg").value = h.msg; $("histWa").href = "https://wa.me/?text=" + encodeURIComponent(h.msg);
+        $("histVer").hidden = false; $("histVer").scrollIntoView({behavior:"smooth", block:"center"}); });
+      li.append(d, b); ul.append(li);
+    });
+  }
+  $("histCopy").addEventListener("click", ()=>{
+    const t = $("histMsg").value, fb = ()=>{ $("histMsg").focus(); $("histMsg").select(); toast("Texto seleccionado: use Copiar del teléfono"); };
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(()=>toast("Mensaje copiado"), fb); else fb();
+  });
+  let hArm=false, hAt;
+  $("histDel").addEventListener("click", ()=>{
+    if(!hArm){ hArm=true; $("histDel").textContent="Toque otra vez para borrar el historial"; clearTimeout(hAt);
+      hAt=setTimeout(()=>{ hArm=false; $("histDel").textContent="Borrar historial"; }, 4000); return; }
+    hArm=false; $("histDel").textContent="Borrar historial";
+    hist = []; guardarHist(); $("histVer").hidden = true; renderHist();
+    if(st.obra) aplicarObra(st.obra, true);
+    toast("Historial borrado");
+  });
+
   // ---- Send ----
   function fechaTxt(){ const d=new Date(), p=n=>String(n).padStart(2,"0");
     return p(d.getDate())+"-"+p(d.getMonth()+1)+"-"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes()); }
@@ -619,11 +709,12 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
     if(faltan.length){ $(esF() ? "ofHead" : "camion").open=true; toast("Falta: "+faltan.join(" y ")+" (puede enviar igual)"); }
     $("sendBox").scrollIntoView({behavior:"smooth", block:"start"});
   });
+  $("btnWa").addEventListener("click", ()=>{ buildMsg(); setTimeout(registrarEnvio, 600); });
   $("btnCopy").addEventListener("click", ()=>{
     const txt = buildMsg();
-    const fallback = ()=>{ const t=$("msg"); t.focus(); t.select(); toast("Texto seleccionado: use Copiar del teléfono"); };
+    const fallback = ()=>{ const t=$("msg"); t.focus(); t.select(); toast("Texto seleccionado: cópielo y luego toque Enviar de nuevo para cerrar"); };
     if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(txt).then(()=>toast("Mensaje copiado. Péguelo en WhatsApp."), fallback);
+      navigator.clipboard.writeText(txt).then(()=>{ registrarEnvio(); setTimeout(()=>toast("Mensaje copiado y guardado en Enviados. Péguelo en WhatsApp."), 1900); }, fallback);
     } else fallback();
   });
   // Guardar archivo: hoja de compartir del teléfono o descarga normal
@@ -635,12 +726,12 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
     const txt = buildMsg();
     try{
       const file = new File([txt], name, {type:"text/plain"});
-      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:TXT[modo].titulo}); return; }
+      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:TXT[modo].titulo}); registrarEnvio(); return; }
     }catch(e){ if(e && e.name==="AbortError") return; }
     const url = URL.createObjectURL(new Blob([txt], {type:"text/plain"}));
     const a = document.createElement("a"); a.href=url; a.download=name; document.body.append(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url), 4000);
-    toast("Archivo descargado");
+    registrarEnvio();
   });
   let armed=false, at;
   $("btnNew").addEventListener("click", ()=>{
@@ -668,7 +759,9 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
   function syncMsg(t, cls){ const el=$("syncInfo"); el.className = "info" + (cls ? " "+cls : ""); el.textContent = t; }
   function obraALista(o){
     const L = {proy:o.c, nombre:o.n||"", maxKg:(datos && datos.maxKg)||0, piezas:{}};
-    (esF() ? (o.o||[]) : (o.p||[])).forEach(p=>{ L.piezas[norm(p[0])] = {d:+p[1]||0, kg:+p[2]||0, z:p[3]||"", desc:p[4]||"", pl:p[5]||""}; });
+    const env = enviadasPend(modo, o.c);
+    (esF() ? (o.o||[]) : (o.p||[])).forEach(p=>{ const k = norm(p[0]), e = env[k]||0;
+      L.piezas[k] = {d:Math.max(0,(+p[1]||0)-e), kg:+p[2]||0, z:p[3]||"", desc:p[4]||"", pl:p[5]||"", env:e}; });
     return L;
   }
   function poblarObras(){
@@ -758,7 +851,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
       const main = document.createElement("button"); main.type="button"; main.className="it-main disp-main";
       const mk = document.createElement("div"); mk.className="it-mark"; mk.textContent=k;
       const sub = document.createElement("div"); sub.className="it-sub";
-      sub.textContent = [p.desc, p.z ? "Zona "+p.z : "", fmt1(p.kg)+" kg/u"].filter(Boolean).join(" · ");
+      sub.textContent = [p.desc, p.z ? "Zona "+p.z : "", fmt1(p.kg)+" kg/u", p.env ? p.env+" ya enviadas" : ""].filter(Boolean).join(" · ");
       main.append(mk, sub);
       main.addEventListener("click", ()=>{ mInp.value=k; qInp.value=Math.max(1, libre); showInfo(); mInp.scrollIntoView({behavior:"smooth", block:"center"}); });
       const n = document.createElement("div"); n.className="disp-n";
@@ -786,7 +879,7 @@ label.f select{font-size:1rem;font-weight:600;color:var(--ink);background:var(--
   if(enApp) $("atajo").open = true;
 
   setSaved("telefono");
-  aplicarModoUI(); fillCamion(); fillOF(); listaUI(); poblarZonas(); render();
+  aplicarModoUI(); fillCamion(); fillOF(); listaUI(); poblarZonas(); render(); renderHist();
   poblarObras();
   bajarDatos();
 })();
